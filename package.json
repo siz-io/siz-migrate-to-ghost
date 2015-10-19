@@ -1,0 +1,13 @@
+{
+  "name": "siz-migrate-to-ghost",
+  "version": "1.0.0",
+  "description": "Siz migrator",
+  "dependencies": {
+    "bluebird": "^2.10.2",
+    "lodash": "^3.10.1",
+    "mongodb": "^2.0.45",
+    "node-uuid": "^1.4.3",
+    "request": "^2.65.0"
+  },
+  "private": true
+}
