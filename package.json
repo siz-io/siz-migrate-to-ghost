@@ -7,7 +7,8 @@
     "lodash": "^3.10.1",
     "mongodb": "^2.0.45",
     "node-uuid": "^1.4.3",
-    "request": "^2.65.0"
+    "request": "^2.65.0",
+    "showdown": "^1.3.0"
   },
   "private": true
 }

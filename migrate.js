@@ -6,6 +6,9 @@ var mongodb = require('mongodb');
 var uuid = require('node-uuid');
 var using = Promise.using;
 var request = request = Promise.promisify(require("request"));
+var showdown  = require('showdown');
+
+var converter = new showdown.Converter();
 
 Promise.promisifyAll(fs);
 Promise.promisifyAll(mongodb);
@@ -33,15 +36,28 @@ function getImport() {
 }
 
 function toGhostPost(from) {
+
+  var markdown = from.boxes.map(function(box) {
+    return '![](http:'
+      + box.formats.filter(function(format){
+        return format.type === "gif";
+      })[0].href
+      + ')'
+  }).join('\n')
+  + '\n\n'
+  + '<iframe width="560" height="315" src="https://www.youtube.com/embed/'+ from.source.id + '" frameborder="0" allowfullscreen></iframe>' ;
+
+
+  var html = converter.makeHtml(markdown);
+
+
   return { id: idStart++,
     uuid: uuid.v4(),
     title: 'import-' + from.title,
     slug: 'import-' + from.slug,
-    markdown: from.title,
-    html: '<p>'+ from.title + '</p>' +
-          '<p>dont la source est ' + from.source.id + '</p>' +
-          '<p>et les video sont là: ' + from.boxes.map(function(box){return 'http:' + box.formats[0].href}).join() + '</p>',
-    image: 'http://' + from.picture.href,
+    markdown: markdown,
+    html: html,
+    image: 'http:' + from.picture.href,
     featured: 0,
     page: 0,
     status: 'published',
@@ -59,18 +75,64 @@ function toGhostPost(from) {
 
 
 using(getDatabase(), function(db) {
-  return Promise.all([
-    getImport(),
-    db.collection("stories").find({}, {limit: 10}).toArrayAsync()
-  ])
+  return Promise.props({
+    dbImport:  getImport(),
+    stories: db.collection("stories").find({},{limit:10000}).toArrayAsync()
+  })
 }).then(function(results) {
-    console.log(results[0].db[0].data.posts);
-    results[0].db[0].data.posts = results[0].db[0].data.posts.concat(results[1].map(toGhostPost));
-    return results[0];
-}).then(function(writeMe){
-    return fs.writeFileAsync('output.json', JSON.stringify(writeMe, null, 2), {} );
-   })
-  .then(function() {
+    var db = results.dbImport.db;
+    console.log(db[0].data.posts);
+
+    //db[0].data.posts = db[0].data.posts.concat(results.stories.map(toGhostPost));
+
+    /*delete results.dbImport.db[0].meta;
+    delete results.dbImport.db[0].data.permissions;
+    delete results.dbImport.db[0].data.permissions_roles;
+
+    delete results.dbImport.db[0].data.roles;
+    delete results.dbImport.db[0].data.settings;
+
+    delete results.dbImport.db[0].data.posts_tags;
+    delete results.dbImport.db[0].data.tags;
+
+    delete results.dbImport.db[0].data.roles_users;
+    delete results.dbImport.db[0].data.users;*/
+
+    // on va chunker pour aider un peu ghost à importer les data.
+
+
+    var newPosts = results.stories.map(toGhostPost);
+    var chunks = [];
+
+    var i,j = 0;
+    var chunk = 10;
+    for (
+      i=0,j=newPosts.length;
+      i<j;
+      i+=chunk
+      ) {
+      chunks.push(newPosts.slice(i,i+chunk));
+    }
+
+    chunks.map(function(chunk, index) {
+      return fs.writeFileAsync('output-'+ index +'.json', JSON.stringify({
+        db: [{
+          data: {
+            posts: chunk
+          }
+          }]
+      }, null, 2), {} )
+    });
+
+    return results.dbImport;
+}).map(function(){
+    console.log("chunk ok");
+    return true;
+   }, {concurrency:1})
+
+
+
+/*  .join(function() {
     console.log('fini');
   });
-
+*/
