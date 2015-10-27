@@ -114,7 +114,7 @@ using(getDatabase(), function(db) {
       chunks.push(newPosts.slice(i,i+chunk));
     }
 
-    chunks.map(function(chunk, index) {
+    return chunks.map(function(chunk, index) {
       return fs.writeFileAsync('output-'+ index +'.json', JSON.stringify({
         db: [{
           data: {
@@ -124,9 +124,9 @@ using(getDatabase(), function(db) {
       }, null, 2), {} )
     });
 
-    return results.dbImport;
-}).map(function(){
-    console.log("chunk ok");
+    //return results.dbImport;
+}).map(function(what){
+    console.log('chunk ok');
     return true;
    }, {concurrency:1})
 
