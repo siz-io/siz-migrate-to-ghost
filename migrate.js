@@ -30,13 +30,12 @@ function getImport() {
   return request({
     url: ghost_url + '/ghost/api/v0.1/db/?access_token=' + token,
     json: true
-    }).spread(function(response, body) {
+  }).spread(function(response, body) {
       return body;
-    });
+  });
 }
 
 function toGhostPost(from) {
-
   var markdown = from.boxes.map(function(box) {
     return '![](http:'
       + box.formats.filter(function(format){
@@ -47,14 +46,12 @@ function toGhostPost(from) {
   + '\n\n'
   + '<iframe width="560" height="315" src="https://www.youtube.com/embed/'+ from.source.id + '" frameborder="0" allowfullscreen></iframe>' ;
 
-
   var html = converter.makeHtml(markdown);
-
 
   return { id: idStart++,
     uuid: uuid.v4(),
-    title: 'import-' + from.title,
-    slug: 'import-' + from.slug,
+    title: from.title,
+    slug: from.slug,
     markdown: markdown,
     html: html,
     image: 'http:' + from.picture.href,
@@ -126,15 +123,30 @@ using(getDatabase(), function(db) {
 
     //return results.dbImport;
 }).map(function(chunk, index){
-    return fs.writeFileAsync('output-'+ index +'.json', chunk, {} )
+    var filename = 'output-'+ index +'.json';
+    return fs.writeFileAsync(filename, chunk, {} )
       .then(function(){
         console.log('chunk written');
-      });
-   }, {concurrency:1})
+      })
+      .return(filename);
+}, {concurrency:1})
+  .map(function(filename){
 
+    var formData = {
+      importfile: fs.createReadStream(filename)
+    }
 
-
-/*  .join(function() {
+    return request({
+      url: ghost_url + "/ghost/api/v0.1/db/",
+      method: 'POST',
+      headers: {
+        Authorization: 'Bearer ' + process.env.AUTH_TOKEN
+      },
+      formData: formData
+    }).spread(function(response, body) {
+      console.log(filename + ' imported.');
+    }).return(filename);
+  }, {concurrency:1})
+  .then(function(){
     console.log('fini');
   });
-*/
