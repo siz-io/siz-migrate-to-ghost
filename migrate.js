@@ -115,19 +115,21 @@ using(getDatabase(), function(db) {
     }
 
     return chunks.map(function(chunk, index) {
-      return fs.writeFileAsync('output-'+ index +'.json', JSON.stringify({
+      return JSON.stringify({
         db: [{
           data: {
             posts: chunk
           }
           }]
-      }, null, 2), {} )
+      }, null, 2);
     });
 
     //return results.dbImport;
-}).map(function(what){
-    console.log('chunk ok');
-    return true;
+}).map(function(chunk, index){
+    return fs.writeFileAsync('output-'+ index +'.json', chunk, {} )
+      .then(function(){
+        console.log('chunk written');
+      });
    }, {concurrency:1})
 
 
