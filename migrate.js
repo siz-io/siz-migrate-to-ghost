@@ -74,7 +74,7 @@ function toGhostPost(from) {
 using(getDatabase(), function(db) {
   return Promise.props({
     dbImport:  getImport(),
-    stories: db.collection("stories").find({},{limit:10000}).toArrayAsync()
+    stories: db.collection("stories").find({}).toArrayAsync()
   })
 }).then(function(results) {
     var db = results.dbImport.db;
