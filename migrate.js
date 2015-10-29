@@ -6,49 +6,46 @@ var mongodb = require('mongodb');
 var uuid = require('node-uuid');
 var using = Promise.using;
 var request = request = Promise.promisify(require("request"));
-var showdown  = require('showdown');
+var showdown = require('showdown');
 
 var converter = new showdown.Converter();
 
 Promise.promisifyAll(fs);
 Promise.promisifyAll(mongodb);
 
-mongodb_uri  = process.env.MONGO_URI;
+mongodb_uri = process.env.MONGO_URI;
 ghost_url = process.env.GHOST_URL
 
 var idStart = 1000;
 
 function getDatabase() {
-  return mongodb.connectAsync(mongodb_uri).disposer(function(connection, promise) {
+  return mongodb.connectAsync(mongodb_uri).disposer(function (connection, promise) {
     connection.close();
   });
 }
 
 function getImport() {
   // http://test.sizvideos.com/ghost/api/v0.1/authentication/token
-  var token =  process.env.AUTH_TOKEN;
+  var token = process.env.AUTH_TOKEN;
   return request({
     url: ghost_url + '/ghost/api/v0.1/db/?access_token=' + token,
     json: true
-  }).spread(function(response, body) {
-      return body;
+  }).spread(function (response, body) {
+    return body;
   });
 }
 
 function toGhostPost(from) {
-  var markdown = from.boxes.map(function(box) {
-    return '![](http:'
-      + box.formats.filter(function(format){
-        return format.type === "gif";
-      })[0].href
-      + ')'
-  }).join('\n')
-  + '\n\n'
-  + '<iframe width="560" height="315" src="https://www.youtube.com/embed/'+ from.source.id + '" frameborder="0" allowfullscreen></iframe>' ;
+  var markdown = from.boxes.map(function (box) {
+    return '![](http:' + box.formats.filter(function (format) {
+      return format.type === "gif";
+    })[0].href + ')'
+  }).join('\n') + '\n\n' + '<iframe width="560" height="315" src="https://www.youtube.com/embed/' + from.source.id + '" frameborder="0" allowfullscreen></iframe>';
 
   var html = converter.makeHtml(markdown);
 
-  return { id: idStart++,
+  return {
+    id: idStart++,
     uuid: uuid.v4(),
     title: from.title,
     slug: from.slug,
@@ -67,16 +64,17 @@ function toGhostPost(from) {
     updated_at: '2015-10-15T13:29:32.000Z',
     updated_by: 1,
     published_at: '2015-10-15T13:29:32.000Z',
-    published_by: 1 } ;
+    published_by: 1
+  };
 }
 
 
-using(getDatabase(), function(db) {
-  return Promise.props({
-    dbImport:  getImport(),
-    stories: db.collection("stories").find({}).toArrayAsync()
-  })
-}).then(function(results) {
+using(getDatabase(), function (db) {
+    return Promise.props({
+      dbImport: getImport(),
+      stories: db.collection("stories").find({}).toArrayAsync()
+    })
+  }).then(function (results) {
     var db = results.dbImport.db;
     console.log(db[0].data.posts);
 
@@ -101,36 +99,36 @@ using(getDatabase(), function(db) {
     var newPosts = results.stories.map(toGhostPost);
     var chunks = [];
 
-    var i,j = 0;
+    var i, j = 0;
     var chunk = 10;
     for (
-      i=0,j=newPosts.length;
-      i<j;
-      i+=chunk
-      ) {
-      chunks.push(newPosts.slice(i,i+chunk));
+      i = 0, j = newPosts.length; i < j; i += chunk
+    ) {
+      chunks.push(newPosts.slice(i, i + chunk));
     }
 
-    return chunks.map(function(chunk, index) {
+    return chunks.map(function (chunk, index) {
       return JSON.stringify({
         db: [{
           data: {
             posts: chunk
           }
-          }]
+        }]
       }, null, 2);
     });
 
     //return results.dbImport;
-}).map(function(chunk, index){
-    var filename = 'output-'+ index +'.json';
-    return fs.writeFileAsync(filename, chunk, {} )
-      .then(function(){
+  }).map(function (chunk, index) {
+    var filename = 'output-' + index + '.json';
+    return fs.writeFileAsync(filename, chunk, {})
+      .then(function () {
         console.log('chunk written');
       })
       .return(filename);
-}, {concurrency:1})
-  .map(function(filename){
+  }, {
+    concurrency: 1
+  })
+  .map(function (filename) {
 
     var formData = {
       importfile: fs.createReadStream(filename)
@@ -143,10 +141,12 @@ using(getDatabase(), function(db) {
         Authorization: 'Bearer ' + process.env.AUTH_TOKEN
       },
       formData: formData
-    }).spread(function(response, body) {
+    }).spread(function (response, body) {
       console.log(filename + ' imported.');
     }).return(filename);
-  }, {concurrency:1})
-  .then(function(){
+  }, {
+    concurrency: 1
+  })
+  .then(function () {
     console.log('fini');
   });
