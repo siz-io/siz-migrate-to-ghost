@@ -43,7 +43,7 @@ function toGhostPost(from) {
   }).join('\n') + '\n\n' + '<iframe width="560" height="315" src="https://www.youtube.com/embed/' + from.source.id + '" frameborder="0" allowfullscreen></iframe>';
 
   var html = converter.makeHtml(markdown);
-
+  var date = (new Date(from.creationDate)).toISOString();
   return {
     id: idStart++,
     uuid: uuid.v4(),
@@ -59,11 +59,11 @@ function toGhostPost(from) {
     meta_title: null,
     meta_description: null,
     author_id: 1,
-    created_at: '2015-10-15T13:29:20.000Z',
+    created_at: date,
     created_by: 1,
-    updated_at: '2015-10-15T13:29:32.000Z',
+    updated_at: date,
     updated_by: 1,
-    published_at: '2015-10-15T13:29:32.000Z',
+    published_at: date,
     published_by: 1
   };
 }
